@@ -1,0 +1,1285 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>원천세 실무 실습</title>
+<style>body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&family=Noto+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* 팔레트 근거: 관공서 서식 용지(회백 종이) + 먹물 잉크(남색-검정) + 관인 인주(적색, 수정신고 시 "수정 전=빨강/수정 후=검정" 실무 관행과 동일하게 오류·수정에만 사용) */
+:root{
+  --bg:#edece4; --panel:#fffdf8; --ink:#1c2431; --sub:#5c6472; --line:#d6d2c4;
+  --accent:#1f3f66; --accent-ink:#f4f6fa; --accent-soft:#e2e8f0;
+  --good:#2f6b46; --good-bg:#e6f0e8; --bad:#a5382a; --bad-bg:#f8e9e5;
+  --lock:#bdb9ab; --field-num-bg:#1f3f66; --field-num-ink:#f4f6fa;
+  --radius:10px;
+  --font-display:'Noto Serif KR',serif; --font-body:'Noto Sans KR',-apple-system,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#171b22; --panel:#20252e; --ink:#eceef3; --sub:#98a1b0; --line:#333a46;
+    --accent:#7fa0c9; --accent-ink:#101822; --accent-soft:#243247;
+    --good:#7fc79b; --good-bg:#1c2f24; --bad:#e2897c; --bad-bg:#33221e;
+    --lock:#454c58; --field-num-bg:#7fa0c9; --field-num-ink:#101822;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#171b22; --panel:#20252e; --ink:#eceef3; --sub:#98a1b0; --line:#333a46;
+  --accent:#7fa0c9; --accent-ink:#101822; --accent-soft:#243247;
+  --good:#7fc79b; --good-bg:#1c2f24; --bad:#e2897c; --bad-bg:#33221e;
+  --lock:#454c58; --field-num-bg:#7fa0c9; --field-num-ink:#101822;
+}
+*{box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);}
+h1,h2,h3{margin:0 0 8px;line-height:1.35;font-family:var(--font-display);text-wrap:balance;}
+p{line-height:1.6;margin:0 0 10px;}
+input,select,button{font-family:var(--font-body);}
+input[type=text],input[type=number]{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+table.datatable{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}
+table.datatable th{font-family:var(--font-body);}
+
+.wrap{max-width:760px;margin:0 auto;padding:12px 12px 80px;}
+
+/* header / progress */
+.appbar{position:sticky;top:0;background:var(--bg);z-index:20;padding:10px 0 6px;border-bottom:1px solid var(--line);}
+.appbar h1{font-size:17px;}
+.appbar .sub{color:var(--sub);font-size:12.5px;}
+.steps{display:flex;gap:6px;overflow-x:auto;padding:10px 2px 4px;-webkit-overflow-scrolling:touch;}
+.step{flex:0 0 auto;min-width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid var(--line);color:var(--sub);background:var(--panel);}
+.step.done{background:var(--good);border-color:var(--good);color:#fff;}
+.step.current{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+.step.locked{color:var(--lock);border-color:var(--line);}
+.steps-label{font-size:11.5px;color:var(--sub);text-align:center;margin-top:2px;}
+
+/* cards */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:14px 0;}
+.card.scenario{background:var(--accent-soft);border-color:var(--accent-soft);}
+.badge{display:inline-block;font-size:11.5px;padding:3px 9px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:700;margin-bottom:8px;}
+.month-tag{color:var(--accent);font-weight:700;font-size:13px;}
+.note{font-size:12.5px;color:var(--sub);background:var(--panel);border:1px dashed var(--line);border-radius:8px;padding:8px 10px;margin:8px 0;}
+
+/* form fields */
+.field{display:flex;align-items:flex-start;gap:10px;margin:10px 0;}
+.fnum{flex:0 0 26px;width:26px;height:26px;border-radius:50%;background:var(--field-num-bg);color:var(--field-num-ink);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:2px;}
+.fbody{flex:1;min-width:0;}
+.flabel{font-size:13.5px;font-weight:600;margin-bottom:4px;}
+.fhint{font-size:12px;color:var(--sub);margin-bottom:4px;}
+input[type=text],input[type=number],select{
+  width:100%;padding:10px 12px;font-size:15px;border-radius:10px;border:1.5px solid var(--line);
+  background:var(--panel);color:var(--ink);min-height:44px;
+}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px;}
+.radio-row,.check-row{display:flex;flex-wrap:wrap;gap:8px;}
+.radio-row label,.check-row label{
+  display:flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:10px;
+  padding:9px 12px;font-size:13.5px;min-height:44px;cursor:pointer;background:var(--panel);
+}
+.radio-row input,.check-row input{width:18px;height:18px;flex:0 0 auto;}
+
+/* form-table for official document replicas */
+.doc{border:1.5px solid var(--accent);border-radius:6px;overflow:hidden;margin:10px 0;font-size:12.5px;}
+.doc-title{background:var(--accent);color:var(--accent-ink);text-align:center;padding:8px;font-weight:700;font-family:var(--font-display);font-size:14.5px;letter-spacing:.02em;}
+.doc-sub{background:var(--accent-soft);text-align:center;padding:5px;font-size:11.5px;color:var(--sub);font-weight:600;}
+.doc-row{display:flex;border-top:1px solid var(--line);}
+.doc-row:first-child{border-top:none;}
+.doc-cell{padding:8px 10px;flex:1;border-right:1px solid var(--line);}
+.doc-cell:last-child{border-right:none;}
+.doc-cell.label{background:var(--accent-soft);flex:0 0 128px;font-weight:700;font-size:12px;display:flex;align-items:center;}
+.doc-cell input{min-height:38px;font-size:13.5px;padding:6px 8px;}
+@media (max-width:480px){
+  .doc-row{flex-direction:column;}
+  .doc-cell.label{flex:0 0 auto;}
+}
+
+table.datatable{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0;}
+table.datatable th,table.datatable td{border:1px solid var(--line);padding:6px 8px;text-align:center;}
+table.datatable th{background:var(--accent-soft);}
+table.wontable{min-width:520px;}
+table.wontable td,table.wontable th{padding:5px;font-size:11.5px;}
+table.wontable td input{min-height:38px;padding:5px 6px;font-size:12.5px;width:100%;}
+table.wontable tr.total-row{background:var(--accent-soft);}
+table.datatable caption{caption-side:top;text-align:left;font-family:var(--font-body);font-weight:600;font-size:13px;margin-bottom:6px;}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+/* buttons */
+.btnrow{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;}
+button{
+  min-height:46px;padding:10px 18px;border-radius:10px;border:none;font-size:15px;font-weight:700;
+  cursor:pointer;background:var(--accent);color:var(--accent-ink);
+}
+button.secondary{background:var(--panel);color:var(--ink);border:1.5px solid var(--line);}
+button:disabled{opacity:.5;cursor:not-allowed;}
+
+/* feedback */
+.result{border-radius:12px;padding:14px;margin-top:14px;}
+.result.pass{background:var(--good-bg);border:1.5px solid var(--good);}
+.result.fail{background:var(--bad-bg);border:1.5px solid var(--bad);}
+.result h3{margin-bottom:6px;}
+.result.pass h3{color:var(--good);}
+.result.fail h3{color:var(--bad);}
+.explain{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px;}
+.explain-item{font-size:12.5px;margin:6px 0;padding:8px 10px;border-radius:8px;background:var(--panel);}
+.explain-item.wrong{border-left:3px solid var(--bad);}
+.explain-item.right{border-left:3px solid var(--good);}
+.explain-item b{display:block;margin-bottom:2px;}
+
+.locked-note{color:var(--sub);font-size:13px;text-align:center;padding:40px 20px;}
+.footer-note{color:var(--sub);font-size:11.5px;text-align:center;margin-top:24px;}
+.score-pill{display:inline-block;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;margin-left:6px;}
+</style>
+
+<div class="wrap">
+  <div class="appbar">
+    <h1>원천세 실무 실습 &mdash; (주)끌림상사 1년 사이클</h1>
+    <div class="sub">모듈을 통과해야 다음 단계로 넘어갈 수 있습니다 · 입력한 내용은 자동 저장됩니다</div>
+    <div class="steps" id="stepsBar"></div>
+    <div class="steps-label" id="stepsLabel"></div>
+  </div>
+  <div id="content"></div>
+  <div class="footer-note">실습용 학습 프로그램 · 실제 신고 시에는 최신 법령과 국세청 홈택스 안내를 반드시 확인하세요.</div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- persistence ---------------- */
+function loadJSON(key, fallback){
+  try{ var raw = localStorage.getItem(key); if(raw) return JSON.parse(raw); }catch(e){}
+  return fallback;
+}
+function saveJSON(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+
+var progress = loadJSON('wonchunse_progress_v2', {passed:0});
+var answers  = loadJSON('wonchunse_answers_v2', {});
+function saveProgress(){ saveJSON('wonchunse_progress_v2', progress); }
+function saveAnswers(){ saveJSON('wonchunse_answers_v2', answers); }
+
+var state = { current: 0 };
+
+/* ---------------- helpers ---------------- */
+function won(n){ return Number(n).toLocaleString('ko-KR'); }
+function num(v){
+  if(v===null||v===undefined) return NaN;
+  var s = String(v).replace(/[,\s원]/g,'').trim();
+  if(s==='') return NaN;
+  return Number(s);
+}
+function within(actual, expected, tol){
+  if(isNaN(actual)) return false;
+  tol = tol===undefined ? Math.max(10, Math.round(Math.abs(expected)*0.01)) : tol;
+  return Math.abs(actual-expected) <= tol;
+}
+function el(tag, attrs, children){
+  var e = document.createElement(tag);
+  attrs = attrs||{};
+  for(var k in attrs){
+    if(k==='html'){ e.innerHTML = attrs[k]; }
+    else if(k==='class'){ e.className = attrs[k]; }
+    else{ e.setAttribute(k, attrs[k]); }
+  }
+  (children||[]).forEach(function(c){ if(c) e.appendChild(c); });
+  return e;
+}
+function text(t){ return document.createTextNode(t); }
+
+function attachComma(input){
+  input.addEventListener('input', function(){
+    var posFromEnd = input.value.length - input.selectionStart;
+    var neg = input.value.trim().charAt(0)==='-';
+    var digits = input.value.replace(/[^0-9]/g,'').replace(/^0+(?=\d)/,'');
+    var out = digits ? Number(digits).toLocaleString('en-US') : '';
+    input.value = (neg && out ? '-' : '') + out;
+    var newPos = Math.max(0, input.value.length - posFromEnd);
+    try{ input.setSelectionRange(newPos, newPos); }catch(e){}
+  });
+}
+function bindPersistValue(input, id){
+  if(answers[id]!==undefined) input.value = answers[id];
+  var evt = (input.tagName==='SELECT') ? 'change' : 'input';
+  input.addEventListener(evt, function(){ answers[id]=input.value; saveAnswers(); });
+}
+function bindPersistChecked(input, id, val){
+  if(answers[id]!==undefined && answers[id]===val) input.checked = true;
+  input.addEventListener('change', function(){ if(input.checked){ answers[id]=val; saveAnswers(); } });
+}
+function bindPersistCheckbox(input, id){
+  if(answers[id]) input.checked = true;
+  input.addEventListener('change', function(){ answers[id]=input.checked; saveAnswers(); });
+}
+
+/* generic field builders (return {wrap, get}) */
+function dataTable(caption, headers, rows){
+  var wrap = el('div',{class:'table-scroll'});
+  var html = '<caption>'+caption+'</caption><tr>'+headers.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr>';
+  rows.forEach(function(r){ html += '<tr>'+r.map(function(c){return '<td>'+c+'</td>';}).join('')+'</tr>'; });
+  wrap.appendChild(el('table',{class:'datatable',html:html}));
+  return wrap;
+}
+function scenarioCard(mod){
+  var wrap = el('div',{class:'card scenario'});
+  wrap.appendChild(el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]));
+  if(mod.scenarioHtml) wrap.appendChild(el('div',{html:mod.scenarioHtml}));
+  if(mod.scenarioTable) wrap.appendChild(mod.scenarioTable());
+  return wrap;
+}
+function fieldShell(numLabel, label, hint){
+  var wrap = el('div',{class:'field'});
+  wrap.appendChild(el('div',{class:'fnum'},[text(numLabel)]));
+  var body = el('div',{class:'fbody'});
+  body.appendChild(el('div',{class:'flabel'},[text(label)]));
+  if(hint) body.appendChild(el('div',{class:'fhint'},[text(hint)]));
+  wrap.appendChild(body);
+  return {wrap:wrap, body:body};
+}
+function numberField(id, numLabel, label, hint){
+  var s = fieldShell(numLabel, label, hint);
+  var input = el('input',{type:'text', inputmode:'decimal', placeholder:'숫자 입력'});
+  attachComma(input); bindPersistValue(input, id);
+  s.body.appendChild(input);
+  return {wrap:s.wrap, get:function(){ return num(input.value); }, input:input};
+}
+function textField(id, numLabel, label, hint, placeholder){
+  var s = fieldShell(numLabel, label, hint);
+  var input = el('input',{type:'text', placeholder: placeholder||'입력'});
+  bindPersistValue(input, id);
+  s.body.appendChild(input);
+  return {wrap:s.wrap, get:function(){ return input.value.trim(); }, input:input};
+}
+function selectField(id, numLabel, label, hint, options){
+  var s = fieldShell(numLabel, label, hint);
+  var sel = el('select',{});
+  sel.appendChild(el('option',{value:''},[text('선택하세요')]));
+  options.forEach(function(o){ sel.appendChild(el('option',{value:o}, [text(o)])); });
+  bindPersistValue(sel, id);
+  s.body.appendChild(sel);
+  return {wrap:s.wrap, get:function(){ return sel.value; }, input:sel};
+}
+function radioField(id, numLabel, label, hint, options){
+  var s = fieldShell(numLabel, label, hint);
+  var row = el('div',{class:'radio-row'});
+  options.forEach(function(o){
+    var lab = el('label',{});
+    var r = el('input',{type:'radio', name:id});
+    bindPersistChecked(r, id, o);
+    lab.appendChild(r); lab.appendChild(text(o));
+    row.appendChild(lab);
+  });
+  s.body.appendChild(row);
+  return {wrap:s.wrap, get:function(){ var c=row.querySelector('input:checked'); return c?c.parentNode.textContent:null; }};
+}
+function toggleField(numLabel, label, id, optA, optB){
+  /* binary 과세/비과세 style toggle, returns get() -> 'A'|'B'|null */
+  var s = fieldShell(numLabel, label, null);
+  var row = el('div',{class:'radio-row'});
+  var labA = el('label',{}); var rA = el('input',{type:'radio',name:id});
+  bindPersistChecked(rA, id, 'A'); labA.appendChild(rA); labA.appendChild(text(optA));
+  var labB = el('label',{}); var rB = el('input',{type:'radio',name:id});
+  bindPersistChecked(rB, id, 'B'); labB.appendChild(rB); labB.appendChild(text(optB));
+  row.appendChild(labA); row.appendChild(labB);
+  s.body.appendChild(row);
+  return {wrap:s.wrap, get:function(){ if(rA.checked) return 'A'; if(rB.checked) return 'B'; return null; }};
+}
+function checkboxField(numLabel, label, id, checked0){
+  var s = fieldShell(numLabel, label, null);
+  var lab = el('label',{});
+  var c = el('input',{type:'checkbox'});
+  bindPersistCheckbox(c, id);
+  lab.appendChild(c); lab.appendChild(text(checked0));
+  s.body.appendChild(el('div',{class:'check-row'},[lab]));
+  return {wrap:s.wrap, get:function(){ return c.checked; }};
+}
+
+/* 원천징수이행상황신고서 실제 서식(별지 제21호) "❶ 원천징수 명세 및 납부세액" 표를 그대로 옮긴 그리드.
+   근로소득 하위 코드(A01~A06)를 항상 전부 노출해 실습생이 해당 월에 어떤 코드에 입력해야 하는지
+   스스로 구분하도록 한다. 상단은 ①귀속연월 ②지급연월만 선택. 가감계(A10)는 자동 합산된다. */
+function mkTableInput(id){
+  var input = el('input',{type:'text', inputmode:'decimal', placeholder:'0'});
+  input.style.minWidth = '82px';
+  attachComma(input); bindPersistValue(input, id);
+  return input;
+}
+var WONCHUN_ROWS = [
+  {code:'A01', label:'간이세액', group:null},
+  {code:'A02', label:'중도퇴사', group:null},
+  {code:'A03', label:'일용근로', group:null},
+  {code:'A04', label:'합계', group:'연말정산'},
+  {code:'A05', label:'분납신청', group:'연말정산'},
+  {code:'A06', label:'납부금액', group:'연말정산'}
+];
+function renderWonchunDoc(host, cfg){
+  /* cfg.blocks: [{category, rowsData, totalCode, totalLabel, skipTotal, activeCodes}, ...]
+     소득종류 여러 개를 한 신고서에 함께 신고하는 실무를 재현하기 위해 블록을 여러 개 쌓을 수 있다.
+     구버전 호출(cfg.category/rowsData/totalCode/...)은 블록 1개짜리로 자동 변환한다. */
+  var blocks = cfg.blocks || [{
+    category: cfg.category||'근로소득',
+    rowsData: cfg.rowsData||WONCHUN_ROWS,
+    totalCode: cfg.totalCode||'A10',
+    totalLabel: cfg.totalLabel||'가감계',
+    skipTotal: cfg.skipTotal,
+    activeCodes: cfg.activeCodes
+  }];
+  var doc = el('div',{class:'card doc'});
+  doc.appendChild(el('div',{class:'doc-title'},[text(cfg.title || '원천징수이행상황신고서')]));
+  var catLabel = blocks.map(function(b){return b.category;}).join(' · ');
+  doc.appendChild(el('div',{class:'doc-sub'},[text('❶ 원천징수 명세 및 납부세액 ('+catLabel+')')]));
+  function headerRow(labelHtml, controlEl){
+    var row = el('div',{class:'doc-row'});
+    row.appendChild(el('div',{class:'doc-cell label'},[text(labelHtml)]));
+    var cell = el('div',{class:'doc-cell'}); cell.appendChild(controlEl); row.appendChild(cell);
+    doc.appendChild(row);
+  }
+  var fGwiwol = selectField(cfg.idPrefix+'_gwiwol','①','귀속연월',null, cfg.months);
+  headerRow('① 귀속연월', fGwiwol.wrap.querySelector('select'));
+  var fJigwol = selectField(cfg.idPrefix+'_jigwol','②','지급연월',null, cfg.months);
+  headerRow('② 지급연월', fJigwol.wrap.querySelector('select'));
+  var allActive = [];
+  blocks.forEach(function(b){ if(b.activeCodes) allActive = allActive.concat(b.activeCodes); });
+  if(allActive.length){
+    doc.appendChild(el('div',{class:'note'},[text('이번 시나리오에서 실제로 값이 발생하는 코드: '+allActive.join(', ')+' (나머지는 0으로 둡니다)')]));
+  }
+
+  var scroll = el('div',{class:'table-scroll'});
+  var table = el('table',{class:'datatable wontable'});
+  var thead = document.createElement('thead');
+  var tr1 = document.createElement('tr');
+  tr1.innerHTML = '<th rowspan="2">소득자<br>소득구분</th><th rowspan="2"></th><th rowspan="2">세부구분</th><th rowspan="2">코드</th><th colspan="2">소득지급<br><span style="font-weight:400;font-size:10px">(과세미달·비과세 포함)</span></th><th>징수세액</th>';
+  var tr2 = document.createElement('tr');
+  tr2.innerHTML = '<th>④인원</th><th>⑤총지급액</th><th>⑥소득세등</th>';
+  thead.appendChild(tr1); thead.appendChild(tr2);
+  table.appendChild(thead);
+
+  var tbody = document.createElement('tbody');
+  var rowRefs = [];        /* flat, across all blocks */
+  var totalSpans = {};     /* totalCode -> {inwon,jigup,se elements, rows:[...]} */
+  blocks.forEach(function(block){
+    var ROWS = block.rowsData;
+    var ynSpanDone = false, ynSpanGroup = null;
+    var blockRowRefs = [];
+    ROWS.forEach(function(r, i){
+      var tr = document.createElement('tr');
+      if(i===0){
+        var tdCat = document.createElement('td');
+        tdCat.textContent = block.category; tdCat.rowSpan = ROWS.length;
+        tdCat.style.fontWeight = '700';
+        tr.appendChild(tdCat);
+      }
+      if(r.group){
+        if(!ynSpanDone || r.group!==ynSpanGroup){
+          var tdGroup = document.createElement('td');
+          tdGroup.textContent = r.group; tdGroup.rowSpan = ROWS.filter(function(x){return x.group===r.group;}).length;
+          tdGroup.style.fontWeight='700';
+          tr.appendChild(tdGroup);
+          ynSpanDone = true; ynSpanGroup = r.group;
+        }
+      } else {
+        var tdBlank = document.createElement('td'); tr.appendChild(tdBlank);
+      }
+      var tdLabel = document.createElement('td'); tdLabel.textContent = r.label; tr.appendChild(tdLabel);
+      var tdCode = document.createElement('td'); tdCode.textContent = r.code; tr.appendChild(tdCode);
+      var tdInwon = document.createElement('td'); var inInwon = mkTableInput(cfg.idPrefix+'_'+r.code+'_inwon'); tdInwon.appendChild(inInwon); tr.appendChild(tdInwon);
+      var tdJigup = document.createElement('td'); var inJigup = mkTableInput(cfg.idPrefix+'_'+r.code+'_jigup'); tdJigup.appendChild(inJigup); tr.appendChild(tdJigup);
+      var tdSe = document.createElement('td'); var inSe = mkTableInput(cfg.idPrefix+'_'+r.code+'_se'); tdSe.appendChild(inSe); tr.appendChild(tdSe);
+      if(block.activeCodes && block.activeCodes.indexOf(r.code)>=0){ tr.style.background = 'var(--accent-soft)'; }
+      tbody.appendChild(tr);
+      var ref = {code:r.code, inwon:inInwon, jigup:inJigup, se:inSe};
+      rowRefs.push(ref); blockRowRefs.push(ref);
+    });
+    if(!block.skipTotal){
+      var trTotal = document.createElement('tr'); trTotal.className = 'total-row';
+      var tdTotalLabel = document.createElement('td'); tdTotalLabel.textContent = block.totalLabel; tdTotalLabel.colSpan = 3; tdTotalLabel.style.fontWeight = '700'; trTotal.appendChild(tdTotalLabel);
+      var tdTotalCode = document.createElement('td'); tdTotalCode.textContent = block.totalCode; tdTotalCode.style.fontWeight = '700'; trTotal.appendChild(tdTotalCode);
+      var spanInwon = document.createElement('td'); spanInwon.style.fontWeight = '700';
+      var spanJigup = document.createElement('td'); spanJigup.style.fontWeight = '700';
+      var spanSe = document.createElement('td'); spanSe.style.fontWeight = '700';
+      trTotal.appendChild(spanInwon); trTotal.appendChild(spanJigup); trTotal.appendChild(spanSe);
+      tbody.appendChild(trTotal);
+      totalSpans[block.totalCode] = {inwon:spanInwon, jigup:spanJigup, se:spanSe, rows:blockRowRefs};
+    }
+  });
+  table.appendChild(tbody);
+  scroll.appendChild(table);
+  doc.appendChild(scroll);
+  blocks.forEach(function(block){
+    if(!block.skipTotal) doc.appendChild(el('div',{class:'doc-sub'},[text(block.totalCode+'('+block.totalLabel+')는 '+block.category+' 행의 합계로 자동 계산됩니다')]));
+  });
+  host.appendChild(doc);
+
+  function recalc(){
+    Object.keys(totalSpans).forEach(function(code){
+      var t = totalSpans[code];
+      var si=0, sj=0, ss=0;
+      t.rows.forEach(function(r){ si += num(r.inwon.value)||0; sj += num(r.jigup.value)||0; ss += num(r.se.value)||0; });
+      t.inwon.textContent = won(si);
+      t.jigup.textContent = won(sj);
+      t.se.textContent = won(ss);
+    });
+  }
+  rowRefs.forEach(function(r){ [r.inwon,r.jigup,r.se].forEach(function(inp){ inp.addEventListener('input', recalc); }); });
+  recalc();
+
+  function totalOf(code){
+    var t = totalSpans[code];
+    if(!t) return {inwon:0,jigup:0,se:0};
+    var si=0, sj=0, ss=0;
+    t.rows.forEach(function(r){ si += num(r.inwon.value)||0; sj += num(r.jigup.value)||0; ss += num(r.se.value)||0; });
+    return {inwon:si, jigup:sj, se:ss};
+  }
+
+  return {
+    gwiwol:function(){ return fGwiwol.get(); },
+    jigwol:function(){ return fJigwol.get(); },
+    row:function(code){ var r = rowRefs.filter(function(x){return x.code===code;})[0];
+      return { inwon:function(){return num(r.inwon.value);}, jigup:function(){return num(r.jigup.value);}, se:function(){return num(r.se.value);} };
+    },
+    total:function(code){ return totalOf(code); },
+    totalInwon:function(){ return totalOf(blocks[0].totalCode).inwon; },
+    totalJigup:function(){ return totalOf(blocks[0].totalCode).jigup; },
+    totalSe:function(){ return totalOf(blocks[0].totalCode).se; }
+  };
+}
+
+function showResult(container, correct, totalCount, details, onPass, threshold){
+  container.innerHTML = '';
+  var pass = correct >= threshold;
+  var box = el('div',{class:'result '+(pass?'pass':'fail')});
+  var h = el('h3',{});
+  h.appendChild(text((pass?'통과했습니다':'다시 확인해 보세요')+' '));
+  h.appendChild(el('span',{class:'score-pill'},[text(correct+' / '+totalCount)]));
+  box.appendChild(h);
+  var exp = el('div',{class:'explain'});
+  details.forEach(function(d){
+    var item = el('div',{class:'explain-item '+(d.ok?'right':'wrong')});
+    item.appendChild(el('b',{},[text((d.ok?'✓ ':'✗ ')+d.label)]));
+    item.appendChild(text(d.law||''));
+    exp.appendChild(item);
+  });
+  box.appendChild(exp);
+  container.appendChild(box);
+  if(pass){
+    var btn = el('button',{},[text('다음 모듈로 이동 →')]);
+    btn.onclick = onPass;
+    container.appendChild(el('div',{class:'btnrow'},[btn]));
+    if(container.nextSibling && container.nextSibling.classList && container.nextSibling.classList.contains('btnrow')){
+      container.nextSibling.style.display = 'none';
+    }
+  }
+}
+
+/* ================= 간이세액표 미니 조회표 (2026.03.01 국세청 근로소득 간이세액표 발췌) ================= */
+var TAXTABLE = [
+ [2000,2010,19520,14750,6600,3220],[2600,2610,39690,32020,18650,15270],
+ [2760,2770,53380,37500,23870,18660],[2960,2970,70500,53000,30460,25210],
+ [3000,3020,74350,56850,31940,26690],[3240,3260,95430,77380,41770,34610],
+ [3480,3500,124770,99770,60900,47770],[3800,3820,169260,141400,87680,74560],
+ [4040,4060,201300,173260,114480,95730],[4360,4380,244020,215740,153600,134850]
+];
+
+/* ================= MODULES ================= */
+var MODULES = [];
+
+/* ---- 0: 오리엔테이션 ---- */
+MODULES.push({
+  id:'orientation', month:'오리엔테이션', title:'원천세 신고 캘린더 한눈에 보기',
+  render:function(host, onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('span',{class:'badge'},[text('시작하기')]),
+      el('h2',{},[text('가상회사 (주)끌림상사, 1년을 함께 갑니다')]),
+      el('p',{},[text('여러분은 (주)끌림상사의 원천세 담당자입니다. 매월 급여는 당월에 지급하는 것을 원칙으로 하며, 1월부터 다음 해까지 실제 실무 순서대로 급여대장 작성 → 비과세 판단 → 4대보험 검토 → 간이세액표 적용 → 원천징수이행상황신고서 작성을 반복하고, 일용근로소득·중도퇴사·간이지급명세서 같은 이벤트를 함께 처리합니다.')]),
+      el('p',{},[text('각 모듈은 실제 서식의 항목 번호(①②③…)를 그대로 사용합니다. 정답 기준을 충족해야 다음 모듈이 열리고, 입력한 내용은 자동 저장되어 다른 모듈을 보고 돌아와도 남아 있습니다.')])
+    ]));
+    host.appendChild(el('div',{class:'card'},[
+      el('h3',{},[text('신고·제출 캘린더 요약')]),
+      dataTable('시기별 업무', ['시기','업무'], [
+        ['매월 10일','전월 귀속 원천징수이행상황신고서 신고·납부'],
+        ['지급월의 다음달 말일','일용근로소득지급명세서 제출'],
+        ['7/31, 익년 1/31','근로소득 간이지급명세서(반기) 제출'],
+        ['익년 2월 말일','이자·배당·기타소득 등 그 밖의 소득 지급명세서 제출'],
+        ['익년 2월','연말정산'],
+        ['익년 3/10','근로소득·퇴직·사업소득 지급명세서 제출']
+      ])
+    ]));
+    var btn = el('button',{},[text('실습 시작하기')]);
+    btn.onclick = function(){ onPass(); };
+    host.appendChild(el('div',{class:'btnrow'},[btn]));
+  }
+});
+
+/* ---- 1: 급여대장 작성 ---- */
+MODULES.push({
+  id:'payroll', month:'1월', title:'급여대장 작성 실습',
+  render:function(host, onPass){
+    var mod=this;
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('(주)끌림상사 사무직 근로자 김한결의 1월 급여자료입니다. 공제대상가족 2명(본인+배우자), 원천징수세액 100% 적용.')]),
+      dataTable('1월 지급 항목', ['항목','금액','비고'], [
+        ['기본급','2,800,000원','과세'],
+        ['직책수당','200,000원','과세'],
+        ['식대','200,000원','현물식사 제공 없음'],
+        ['자가운전보조금','200,000원','본인 명의 차량, 별도 여비 정산 없음']
+      ])
+    ]));
+    var card = el('div',{class:'card'},[el('h3',{},[text('입력하기')])]);
+    var f1 = numberField('payroll_gross','①','급여 합계 (지급총액)','기본급+직책수당+식대+자가운전보조금');
+    var f2 = numberField('payroll_taxable','②','과세대상 급여 (비과세 제외)','간이세액표 조회에 쓰이는 금액');
+    var f3 = numberField('payroll_nontax','③','비과세 합계','식대+자가운전보조금 (각 월 한도 이내)');
+    [f1,f2,f3].forEach(function(f){card.appendChild(f.wrap);});
+    host.appendChild(card);
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var checks = [
+        {ok: within(f1.get(),3400000,0), label:'① 급여 합계', law:'정답 3,400,000원'},
+        {ok: within(f2.get(),3000000,0), label:'② 과세대상 급여', law:'정답 3,000,000원 (기본급+직책수당)'},
+        {ok: within(f3.get(),400000,0), label:'③ 비과세 합계', law:'정답 400,000원 (식대+자가운전보조금)'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, 3);
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 2: 비과세 근로소득 판단 (확장) ---- */
+MODULES.push({
+  id:'nontax', month:'1월', title:'비과세 근로소득 판단 실습',
+  render:function(host, onPass){
+    var items = [
+      {label:'식대 20만원 지급 (별도 현물식사 제공 없음)', answer:'B', law:'월 20만원 이하 식대는 전액 비과세'},
+      {label:'식대 25만원 지급 (별도 현물식사 제공 없음)', answer:'A', law:'비과세 한도(월 20만원)를 초과하므로 전액 비과세는 아님(초과분 5만원 과세)'},
+      {label:'자가운전보조금 20만원 (본인 명의 차량, 별도 여비 정산 없음)', answer:'B', law:'본인 차량 업무사용 + 실비 정산 없음 요건 충족 시 월 20만원 이내 비과세'},
+      {label:'자가운전보조금 20만원 (본인 명의 차량이지만 실제 유류비도 별도로 정산해 줌)', answer:'A', law:'실비변상적 여비를 별도로 지급받으면 자가운전보조금은 비과세 요건 미충족'},
+      {label:'6세 이하 자녀 2명의 보육수당, 자녀 1인당 20만원씩 총 40만원 (2026년 귀속)', answer:'B', law:'2026년 개정: 자녀 1인당 월 20만원 한도이므로 2명×20만원=40만원 전액 비과세 (종전에는 자녀 수와 무관하게 20만원 한도였음)'},
+      {label:'6세 이하 자녀 1명의 보육수당 25만원 (2026년 귀속)', answer:'A', law:'2026년 개정에도 1인당 한도는 월 20만원이므로 초과분 5만원은 과세'},
+      {label:'자녀 출생일 이후 2년 이내 지급하는 출산지원금 300만원 (1회차)', answer:'B', law:'출산지원금은 한도 없이 전액 비과세 (최대 2회까지)'},
+      {label:'직책수당 20만원', answer:'A', law:'비과세 항목으로 열거되지 않은 일반 근로소득'},
+      {label:'사무직 근로자의 야간근로수당 15만원', answer:'A', law:'야간근로수당 비과세는 생산직 등 요건을 갖춘 근로자에게만 적용'}
+    ];
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('아래 각 지급 항목이 "전액 비과세"로 처리될 수 있는지 판단하세요.')])
+    ]));
+    var card = el('div',{class:'card'});
+    var toggles = [];
+    items.forEach(function(it,i){
+      var id = 'nontax_'+i;
+      var t = toggleField(String(i+1), it.label, id, '과세(또는 일부과세)', '전액 비과세');
+      card.appendChild(t.wrap);
+      toggles.push({t:t, item:it});
+    });
+    host.appendChild(card);
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var correct=0, details=[];
+      toggles.forEach(function(s){
+        var v = s.t.get();
+        var ok = v === s.item.answer;
+        if(ok) correct++;
+        details.push({ok:ok, label:s.item.label, law:s.item.law});
+      });
+      showResult(result, correct, items.length, details, onPass, 8);
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 3: 4대보험 검토 ---- */
+MODULES.push({
+  id:'insurance', month:'1월', title:'4대보험 검토 실습',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('김한결의 보수월액(과세대상 급여) 3,000,000원 기준으로 4대보험 근로자 부담분을 계산하세요.')]),
+      dataTable('2026년 4대보험 요율(근로자 부담분)', ['보험','요율'], [
+        ['국민연금','4.75% (보수월액 기준)'],
+        ['건강보험','3.595% (보수월액 기준)'],
+        ['노인장기요양보험','건강보험료 × 13.14%'],
+        ['고용보험(실업급여분)','0.9% (보수월액 기준)']
+      ])
+    ]));
+    var card = el('div',{class:'card'},[el('h3',{},[text('입력하기')])]);
+    var f1 = numberField('ins_np','①','국민연금 (보수월액 × 4.75%)');
+    var f2 = numberField('ins_nhi','②','건강보험 (보수월액 × 3.595%)');
+    var f3 = numberField('ins_ltc','③','장기요양보험 (건강보험료 × 13.14%)');
+    var f4 = numberField('ins_ei','④','고용보험 (보수월액 × 0.9%)');
+    [f1,f2,f3,f4].forEach(function(f){card.appendChild(f.wrap);});
+    host.appendChild(card);
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var checks = [
+        {ok: within(f1.get(),142500,50), label:'① 국민연금', law:'정답 142,500원'},
+        {ok: within(f2.get(),107850,50), label:'② 건강보험', law:'정답 107,850원'},
+        {ok: within(f3.get(),14170,60), label:'③ 장기요양보험', law:'정답 약 14,170원 (107,850×13.14%)'},
+        {ok: within(f4.get(),27000,50), label:'④ 고용보험', law:'정답 27,000원'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, 3);
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 4: 간이세액표 적용 (확장: 포함항목 판단 + 본인포함 안내 + 100% 명시) ---- */
+MODULES.push({
+  id:'taxtable', month:'1월', title:'간이세액표 적용 실습',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('김한결의 1월 급여 항목은 아래와 같습니다. 식대와 자가운전보조금은 비과세 항목이므로 이미 제외하고, 월급여액(간이세액표 조회용)은 2,800,000원+200,000원=3,000,000원으로 산정되어 있습니다. 공제대상가족의 수는 본인을 포함한 인원이며, 이번 사례는 본인+배우자=2명입니다. 원천징수세액은 100%를 적용합니다.')]),
+      dataTable('1월 지급 항목', ['항목','금액'], [
+        ['기본급','2,800,000원'],['직책수당','200,000원'],['식대(비과세)','200,000원'],['자가운전보조금(비과세)','200,000원'],['월급여액(비과세 제외, 조회용)','3,000,000원']
+      ])
+    ]));
+
+    var tcard = el('div',{class:'card'});
+    tcard.appendChild(el('h3',{},[text('간이세액표 발췌 (단위: 원, 공제대상가족수는 본인 포함)')]));
+    tcard.appendChild(dataTable('2026.03.01 국세청 근로소득 간이세액표 발췌',
+      ['월급여액(이상~미만, 천원)','가족1명','가족2명','가족3명이상'],
+      TAXTABLE.map(function(r){ return [r[0]+'~'+r[1], won(r[2]), won(r[3]), won(r[4])]; })
+    ));
+    host.appendChild(tcard);
+
+    var card = el('div',{class:'card'},[el('h3',{},[text('① 세액 조회 및 결정')])]);
+    var f2 = numberField('tt_lookup','①','조회한 간이세액 (100% 기준)','월급여액 3,000,000원, 가족 2명 기준으로 조회');
+    var f3 = radioField('tt_ratio','②','원천징수세액 비율 선택','시나리오에서 100% 적용을 지시했습니다', ['80%','100%','120%']);
+    var f4 = numberField('tt_final','③','최종 원천징수 소득세액');
+    [f2,f3,f4].forEach(function(f){card.appendChild(f.wrap);});
+    host.appendChild(card);
+
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var details = [];
+      var okLookup = within(f2.get(), 56850, 20);
+      var okRatio = f3.get() === '100%';
+      var okFinal = within(f4.get(), 56850, 20);
+      details.push({ok:okLookup, label:'① 조회한 간이세액', law:'월급여 3,000~3,020천원 구간, 가족 2명 → 56,850원'});
+      details.push({ok:okRatio, label:'② 비율 선택', law:'시나리오에서 100% 적용을 지시했습니다'});
+      details.push({ok:okFinal, label:'③ 최종 원천징수 소득세액', law:'100% 선택 시 조회세액 그대로 = 56,850원'});
+      var correct = (okLookup?1:0) + (okRatio?1:0) + (okFinal?1:0);
+      var total = 3;
+      showResult(result, correct, total, details, onPass, Math.ceil(total*0.8));
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 5: 원천징수이행상황신고서 (매월분, 1월귀속) ---- */
+MODULES.push({
+  id:'wonchun1', month:'2월(1월귀속 신고)', title:'원천징수이행상황신고서 작성 (매월분)',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('(주)끌림상사의 1월 귀속 근로소득(간이세액, A01) 전체 집계자료입니다. 2월 10일까지 신고합니다.')]),
+      dataTable('1월 귀속 근로소득 집계', ['항목','값'], [
+        ['근로자 인원','5명'],['총지급액','15,000,000원'],['소득세 등 합계','250,000원'],['농어촌특별세','0원'],['전월미환급세액','없음']
+      ])
+    ]));
+    var months = ['2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
+    var doc = renderWonchunDoc(host, {
+      idPrefix:'w1', months:months, category:'근로소득', activeCodes:['A01']
+    });
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var a01 = doc.row('A01');
+      var checks = [
+        {ok: doc.gwiwol()==='2026-01', label:'① 귀속연월', law:'정답 2026-01'},
+        {ok: doc.jigwol()==='2026-01', label:'② 지급연월', law:'정답 2026-01 (매월신고는 귀속월=지급월)'},
+        {ok: within(a01.inwon(),5,0), label:'④ A01 인원', law:'정답 5명'},
+        {ok: within(a01.jigup(),15000000,0), label:'⑤ A01 총지급액', law:'정답 15,000,000원'},
+        {ok: within(a01.se(),250000,0), label:'⑥ A01 소득세 등', law:'정답 250,000원'},
+        {ok: within(doc.totalInwon(),5,0), label:'A10 가감계 인원(자동)', law:'정답 5명 (A01과 동일)'},
+        {ok: within(doc.totalJigup(),15000000,0), label:'A10 가감계 총지급액(자동)', law:'정답 15,000,000원'},
+        {ok: within(doc.totalSe(),250000,0), label:'A10 가감계 소득세 등(자동)', law:'정답 250,000원'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, Math.ceil(checks.length*0.8));
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 6: 일용근로소득 실습 (1일분 계산 후 ×5일) ---- */
+MODULES.push({
+  id:'daily', month:'4월', title:'일용근로소득 실습 (1일분 계산 → 5일 적용)',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('단기 일용직 1명을 4월 1일~5일, 매일 동일한 일당 220,000원으로 채용했습니다. 일용근로소득은 지급할 때마다(매일) 원천징수하므로, 하루치를 먼저 계산한 뒤 5일分을 곱해서 구합니다.')]),
+      dataTable('지급 조건', ['항목','내용'], [
+        ['일당','220,000원 (4/1~4/5 매일 동일)'],['근무일수','5일'],
+        ['1일 비과세','150,000원'],['세율','6%'],['근로소득세액공제','산출세액의 55%'],
+        ['소액부징수','결정세액이 1,000원 미만이면 원천징수하지 않음']
+      ])
+    ]));
+    var card = el('div',{class:'card'},[el('h3',{},[text('① 1일분 계산')])]);
+    var f1 = numberField('daily_d_taxable','①','1일 과세표준','일당 220,000 - 비과세 150,000');
+    var f2 = numberField('daily_d_calc','②','1일 산출세액','과세표준 × 6%');
+    var f3 = numberField('daily_d_credit','③','1일 세액공제','산출세액 × 55%');
+    var f4 = numberField('daily_d_decided','④','1일 결정세액 (=소득세)','산출세액 - 세액공제');
+    var f5 = numberField('daily_d_local','⑤','1일 지방소득세','결정세액 × 10% (원단위 절사)');
+    [f1,f2,f3,f4,f5].forEach(function(f){card.appendChild(f.wrap);});
+    host.appendChild(card);
+
+    var card2 = el('div',{class:'card'},[el('h3',{},[text('② 5일分 합계 (1일분 × 5)')])]);
+    var f6 = numberField('daily_total','⑥','총지급액 (일당×5일)');
+    var f7 = numberField('daily_nontax','⑦','비과세소득 합계 (150,000×5일)');
+    var f8 = numberField('daily_taxable','⑧','과세소득 합계 (⑥-⑦)');
+    var f9 = numberField('daily_setotal','⑨','소득세 합계 (④×5일)');
+    var f10 = numberField('daily_localtotal','⑩','지방소득세 합계 (⑤×5일)');
+    [f6,f7,f8,f9,f10].forEach(function(f){card2.appendChild(f.wrap);});
+    host.appendChild(card2);
+
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var checks = [
+        {ok: within(f1.get(),70000,0), label:'① 1일 과세표준', law:'정답 70,000원 (220,000-150,000)'},
+        {ok: within(f2.get(),4200,10), label:'② 1일 산출세액', law:'정답 4,200원 (70,000×6%)'},
+        {ok: within(f3.get(),2310,10), label:'③ 1일 세액공제', law:'정답 2,310원 (4,200×55%)'},
+        {ok: within(f4.get(),1890,10), label:'④ 1일 결정세액(소득세)', law:'정답 1,890원 (4,200-2,310)'},
+        {ok: within(f5.get(),180,10), label:'⑤ 1일 지방소득세', law:'정답 180원 (189원 → 원단위 절사)'},
+        {ok: within(f6.get(),1100000,0), label:'⑥ 총지급액(5일)', law:'정답 1,100,000원'},
+        {ok: within(f7.get(),750000,0), label:'⑦ 비과세소득 합계', law:'정답 750,000원'},
+        {ok: within(f8.get(),350000,0), label:'⑧ 과세소득 합계', law:'정답 350,000원'},
+        {ok: within(f9.get(),9450,20), label:'⑨ 소득세 합계', law:'정답 9,450원 (1,890×5)'},
+        {ok: within(f10.get(),900,20), label:'⑩ 지방소득세 합계', law:'정답 900원 (180×5)'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, 8);
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 7: 일용근로소득지급명세서(별도) + 근로·일용 동시신고 ---- */
+MODULES.push({
+  id:'dailyreport', month:'4월', title:'일용근로소득지급명세서 & 신고서 동시 작성',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('앞서 계산한 4월 일용근로소득을 ① 일용근로소득지급명세서(별도 서식)로 제출하고, ② 4월 귀속 원천징수이행상황신고서에는 상용근로자(A01)와 일용근로자(A03)를 함께 반영합니다.')]),
+      dataTable('4월 집계자료', ['구분','인원','총지급액','소득세 등'], [
+        ['상용근로자(A01)','5명','15,000,000원','250,000원'],
+        ['일용근로자(A03)','1명','1,100,000원','9,450원']
+      ])
+    ]));
+
+    var docA = el('div',{class:'card doc'});
+    docA.appendChild(el('div',{class:'doc-title'},[text('일용근로소득지급명세서')]));
+    docA.appendChild(el('div',{class:'doc-sub'},[text('제출기한: 지급월의 다음달 말일')]));
+    function docRow(container, labelHtml, controlEl){
+      var row = el('div',{class:'doc-row'});
+      row.appendChild(el('div',{class:'doc-cell label'},[text(labelHtml)]));
+      var cell = el('div',{class:'doc-cell'}); cell.appendChild(controlEl); row.appendChild(cell);
+      container.appendChild(row);
+    }
+    var months = ['2026-03','2026-04','2026-05','2026-06'];
+    var fGwiwol = selectField('dr_gwiwol','①','귀속연월(지급월)',null, months);
+    docRow(docA, '① 귀속연월', fGwiwol.wrap.querySelector('select'));
+    var fDeadline = selectField('dr_deadline','②','제출기한(다음달 말일)',null, ['2026-04-30','2026-05-31','2026-06-30','2026-07-31']);
+    docRow(docA, '② 제출기한', fDeadline.wrap.querySelector('select'));
+    var fDays = numberField('dr_days','③','근무월일수'); docRow(docA,'③ 근무월일수', fDays.input);
+    var fTotal = numberField('dr_total','④','총지급액'); docRow(docA,'④ 총지급액', fTotal.input);
+    var fNontax = numberField('dr_nontax','⑤','비과세소득'); docRow(docA,'⑤ 비과세소득', fNontax.input);
+    var fTax = numberField('dr_tax','⑥','소득세'); docRow(docA,'⑥ 소득세', fTax.input);
+    var fLocal = numberField('dr_local','⑦','지방소득세'); docRow(docA,'⑦ 지방소득세', fLocal.input);
+    host.appendChild(docA);
+
+    var months2 = ['2026-03','2026-04','2026-05','2026-06'];
+    var doc = renderWonchunDoc(host, {
+      idPrefix:'dr', months:months2, title:'원천징수이행상황신고서 (4월 귀속, 근로+일용 동시)', category:'근로소득', activeCodes:['A01','A03']
+    });
+
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var a01=doc.row('A01'), a03=doc.row('A03');
+      var checks = [
+        {ok: fGwiwol.get()==='2026-04', label:'① 귀속연월(지급명세서)', law:'정답 2026-04'},
+        {ok: fDeadline.get()==='2026-05-31', label:'② 제출기한', law:'2026년 기준 지급월의 다음달 말일 → 2026-05-31'},
+        {ok: within(fDays.get(),5,0), label:'③ 근무월일수', law:'정답 5일'},
+        {ok: within(fTotal.get(),1100000,0), label:'④ 총지급액', law:'정답 1,100,000원'},
+        {ok: within(fNontax.get(),750000,0), label:'⑤ 비과세소득', law:'정답 750,000원'},
+        {ok: within(fTax.get(),9450,20), label:'⑥ 소득세', law:'정답 9,450원'},
+        {ok: within(fLocal.get(),900,20), label:'⑦ 지방소득세', law:'정답 900원'},
+        {ok: doc.gwiwol()==='2026-04' && doc.jigwol()==='2026-04', label:'신고서 귀속·지급연월', law:'매월신고이므로 2026-04로 동일하게 선택합니다'},
+        {ok: within(a01.inwon(),5,0), label:'A01 인원', law:'정답 5명'},
+        {ok: within(a01.jigup(),15000000,0), label:'A01 총지급액', law:'정답 15,000,000원'},
+        {ok: within(a01.se(),250000,0), label:'A01 소득세 등', law:'정답 250,000원'},
+        {ok: within(a03.inwon(),1,0), label:'A03 인원', law:'정답 1명'},
+        {ok: within(a03.jigup(),1100000,0), label:'A03 총지급액', law:'정답 1,100,000원'},
+        {ok: within(a03.se(),9450,20), label:'A03 소득세 등', law:'정답 9,450원'},
+        {ok: within(doc.totalInwon(),6,0), label:'A10 가감계 인원(자동)', law:'정답 6명 (5+1)'},
+        {ok: within(doc.totalJigup(),16100000,0), label:'A10 가감계 총지급액(자동)', law:'정답 16,100,000원'},
+        {ok: within(doc.totalSe(),259450,20), label:'A10 가감계 소득세 등(자동)', law:'정답 259,450원'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, Math.ceil(checks.length*0.8));
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 8: 중도퇴사자 처리 (근로소득 정산 + 퇴직소득 동시신고) ---- */
+MODULES.push({
+  id:'midyear', month:'5월', title:'중도퇴사자 처리 실습 (근로소득 정산 + 퇴직소득 동시신고)',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('근로자 이영희(근속 3년)가 5월 31일 퇴사했습니다. 같은 달 계속근로자 4명의 급여도 함께 신고해야 합니다. 이영희는 퇴사와 함께 급여(근로소득) 정산분과 퇴직급여(퇴직소득)를 각각 지급받으며, 두 소득은 서로 다른 소득종류이므로 같은 신고서 안에서도 코드를 구분해 기재합니다.')]),
+      dataTable('5월 집계자료', ['구분','인원','총지급액','비고'], [
+        ['계속근로자(A01)','4명','12,000,000원','소득세 등 200,000원'],
+        ['중도퇴사자 이영희 급여(A02)','1명','15,000,000원(연간누적)','정산 별도 계산'],
+        ['중도퇴사자 이영희 퇴직급여(A21)','1명','9,000,000원','퇴직소득세 별도 계산']
+      ]),
+      dataTable('이영희 퇴사월 연말정산 결과 (근로소득)', ['항목','금액'], [
+        ['연간 누적 총급여','15,000,000원'],['결정세액(정산)','380,000원'],['기납부세액','450,000원']
+      ]),
+      dataTable('이영희 퇴직소득세 계산 (연분연승법, 근속 3년)', ['단계','금액'], [
+        ['퇴직급여액','9,000,000원'],
+        ['근속연수공제 (3년, 100만원×3년)','3,000,000원'],
+        ['환산급여 = (퇴직급여액-근속연수공제)×12/근속연수','24,000,000원'],
+        ['환산급여공제 (800만원+(환산급여-800만원)×60%)','17,600,000원'],
+        ['환산과세표준 = 환산급여-환산급여공제','6,400,000원'],
+        ['환산산출세액 (기본세율 6%구간, 누진공제 없음)','384,000원']
+      ])
+    ]));
+
+    var card1 = el('div',{class:'card'},[el('h3',{},[text('① 이영희 근로소득 정산')])]);
+    var f1 = numberField('mid_diff','①','차감징수세액 (결정세액-기납부세액)','음수면 환급세액을 의미');
+    card1.appendChild(f1.wrap);
+    host.appendChild(card1);
+
+    var card2 = el('div',{class:'card'},[el('h3',{},[text('② 이영희 퇴직소득세 (연분연승)')])]);
+    var f2 = numberField('mid_ret_tax','②','산출세액 = 환산산출세액 × 근속연수(3) ÷ 12');
+    card2.appendChild(f2.wrap);
+    var f3 = numberField('mid_ret_local','③','지방소득세 (산출세액의 10%)');
+    card2.appendChild(f3.wrap);
+    var f4 = numberField('mid_ret_net','④','차인지급액 (퇴직급여-산출세액-지방소득세)');
+    card2.appendChild(f4.wrap);
+    host.appendChild(card2);
+
+    var months = ['2026-03','2026-04','2026-05','2026-06'];
+    var doc = renderWonchunDoc(host, {
+      idPrefix:'mid', months:months, title:'원천징수이행상황신고서 (5월 귀속, 근로소득 + 퇴직소득 동시신고)',
+      blocks:[
+        {category:'근로소득', rowsData:WONCHUN_ROWS, totalCode:'A10', totalLabel:'가감계', activeCodes:['A01','A02']},
+        {category:'퇴직소득', rowsData:[{code:'A21', label:'퇴직소득', group:null}], totalCode:'A20', totalLabel:'가감계', activeCodes:['A21']}
+      ]
+    });
+
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var a01=doc.row('A01'), a02=doc.row('A02'), a21=doc.row('A21');
+      var t10=doc.total('A10'), t20=doc.total('A20');
+      var checks = [
+        {ok: within(f1.get(),-70000,0), label:'① 차감징수세액(근로소득 정산)', law:'380,000-450,000=△70,000원(환급)'},
+        {ok: within(f2.get(),96000,0), label:'② 퇴직소득 산출세액', law:'384,000×3/12=96,000원'},
+        {ok: within(f3.get(),9600,0), label:'③ 퇴직소득 지방소득세', law:'96,000×10%=9,600원'},
+        {ok: within(f4.get(),8894400,0), label:'④ 퇴직급여 차인지급액', law:'9,000,000-96,000-9,600=8,894,400원'},
+        {ok: doc.gwiwol()==='2026-05' && doc.jigwol()==='2026-05', label:'귀속·지급연월', law:'매월신고이므로 2026-05로 동일하게 선택합니다'},
+        {ok: within(a01.inwon(),4,0) && within(a01.jigup(),12000000,0) && within(a01.se(),200000,0), label:'A01(계속근로자)', law:'4명 / 12,000,000원 / 200,000원'},
+        {ok: within(a02.inwon(),1,0) && within(a02.jigup(),15000000,0) && within(a02.se(),-70000,0), label:'A02(중도퇴사 급여)', law:'1명 / 15,000,000원 / △70,000원(환급)'},
+        {ok: within(a21.inwon(),1,0) && within(a21.jigup(),9000000,0) && within(a21.se(),96000,0), label:'A21(퇴직소득)', law:'1명 / 9,000,000원 / 96,000원'},
+        {ok: within(t10.inwon,5,0) && within(t10.jigup,27000000,0) && within(t10.se,130000,0), label:'A10 가감계(근로소득, 자동)', law:'5명 / 27,000,000원 / 130,000원'},
+        {ok: within(t20.inwon,1,0) && within(t20.jigup,9000000,0) && within(t20.se,96000,0), label:'A20 가감계(퇴직소득, 자동)', law:'1명 / 9,000,000원 / 96,000원'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, Math.ceil(checks.length*0.8));
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 9: 근로소득 간이지급명세서 ---- */
+MODULES.push({
+  id:'simplereport', month:'7월', title:'근로소득 간이지급명세서 작성',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('상반기(1~6월) 지급분에 대한 근로소득 간이지급명세서를 7월 31일까지 제출합니다. 5월에 이영희가 퇴사했으므로, 상반기 지급대상은 계속근로자 4명(김한결·박서준·최유나·정민재)과 중도퇴사자 이영희, 총 5명입니다.')]),
+      dataTable('상반기 근로소득 지급대상 5명', ['성명','근무기간','상반기 급여 등 합계'], [
+        ['김한결','01.01~06.30','18,000,000원'],
+        ['박서준','01.01~06.30','16,800,000원'],
+        ['최유나','01.01~06.30','15,600,000원'],
+        ['정민재','01.01~06.30','14,400,000원'],
+        ['이영희(중도퇴사)','01.01~05.31','11,400,000원']
+      ])
+    ]));
+
+    var doc = el('div',{class:'card doc'});
+    doc.appendChild(el('div',{class:'doc-title'},[text('간이지급명세서(근로소득)')]));
+    function docRow(labelHtml, controlEl){
+      var row = el('div',{class:'doc-row'});
+      row.appendChild(el('div',{class:'doc-cell label'},[text(labelHtml)]));
+      var cell = el('div',{class:'doc-cell'}); cell.appendChild(controlEl); row.appendChild(cell);
+      doc.appendChild(row);
+    }
+    var fYear = textField('sr_year','⑧','귀속연도',null,'예: 2026'); docRow('⑧ 귀속연도', fYear.input);
+    var fPeriod = radioField('sr_period','⑨','지급 시기',null,['상반기','하반기']);
+    docRow('⑨ 지급 시기', fPeriod.wrap.querySelector('.radio-row'));
+    var fPeople = numberField('sr_people','⑩','근로자 총 인원'); docRow('⑩ 근로자 총 인원', fPeople.input);
+    var fIncome = numberField('sr_income','⑪','과세소득 합계'); docRow('⑪ 과세소득 합계', fIncome.input);
+    host.appendChild(doc);
+
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var checks = [
+        {ok: fYear.get().indexOf('2026')>=0, label:'⑧ 귀속연도', law:'정답 2026'},
+        {ok: fPeriod.get()==='상반기', label:'⑨ 지급 시기', law:'1~6월 지급분이므로 상반기'},
+        {ok: within(fPeople.get(),5,0), label:'⑩ 근로자 총 인원', law:'정답 5명'},
+        {ok: within(fIncome.get(),76200000,0), label:'⑪ 과세소득 합계', law:'정답 76,200,000원 (5명 합계)'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, 4);
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 10: 소득구분 판단 (사업소득 vs 기타소득) ---- */
+MODULES.push({
+  id:'incometype', month:'11월', title:'소득구분 판단 (사업소득 vs 기타소득)',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('(주)끌림상사는 11월에 두 건의 외부 인적용역 대가를 지급합니다. 같은 "강의/원고" 성격이라도 활동 형태에 따라 소득구분이 달라집니다.')]),
+      dataTable('11월 인적용역 지급 2건', ['구분','활동 내용'], [
+        ['이수진 강사','최근 3년간 여러 회사에 매월 정기적으로 출강, 특정 회사에 소속되지 않은 독립된 자격의 프리랜서 강사'],
+        ['한지민 작가','회사 사보에 실릴 원고 1건만 일시적으로 기고 (그 외 거래 없음)']
+      ])
+    ]));
+
+    host.appendChild(el('div',{class:'card'},[el('h3',{},[text('① 이수진 강사')])]));
+    var t1 = toggleField('','활동이 일시적·우발적인가요, 계속적·반복적인가요?','biz_t1','일시적·우발적','계속적·반복적');
+    host.appendChild(t1.wrap);
+    var t2 = toggleField('','고용관계(종속적 지위)에서 제공하는 용역인가요, 독립된 자격으로 제공하는 용역인가요?','biz_t2','고용관계(종속적)','독립된 자격');
+    host.appendChild(t2.wrap);
+    var rClass1 = radioField('biz_class','','이수진 강사의 소득은 어떤 소득으로 구분해야 할까요?',null,['근로소득','사업소득','기타소득']);
+    host.appendChild(rClass1.wrap);
+
+    host.appendChild(el('div',{class:'card'},[el('h3',{},[text('② 한지민 작가')])]));
+    var t3 = toggleField('','활동이 일시적·우발적인가요, 계속적·반복적인가요?','oth_t1','일시적·우발적','계속적·반복적');
+    host.appendChild(t3.wrap);
+    var rClass2 = radioField('oth_class','','한지민 작가의 소득은 어떤 소득으로 구분해야 할까요?',null,['근로소득','사업소득','기타소득']);
+    host.appendChild(rClass2.wrap);
+
+    host.appendChild(el('div',{class:'card'},[
+      el('div',{class:'doc-sub'},[text('판단 기준: 계속적·반복적으로 독립된 자격으로 제공하는 인적용역 대가는 사업소득(3.3%)입니다. 일시적·우발적인 용역 대가는 기타소득(필요경비 60%, 22%)으로 구분합니다. 다음 모듈에서 두 소득의 원천징수세액을 실제로 계산합니다.')])
+    ]));
+
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var checks = [
+        {ok: t1.get()==='B', label:'① 이수진 활동 형태', law:'매월 정기적으로 출강 → 계속적·반복적'},
+        {ok: t2.get()==='B', label:'① 이수진 고용관계', law:'특정 회사에 소속되지 않음 → 독립된 자격'},
+        {ok: rClass1.get()==='사업소득', label:'① 이수진 소득구분', law:'계속·반복성 + 독립성 → 사업소득'},
+        {ok: t3.get()==='A', label:'② 한지민 활동 형태', law:'이번 1건뿐인 일시적 기고 → 일시적·우발적'},
+        {ok: rClass2.get()==='기타소득', label:'② 한지민 소득구분', law:'일시적·우발적 인적용역 대가 → 기타소득'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, Math.ceil(checks.length*0.8));
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 11: 11월 원천징수이행상황신고서 (근로+사업+기타 동시신고) ---- */
+MODULES.push({
+  id:'novreport', month:'11월', title:'11월 원천징수이행상황신고서 (근로+사업+기타 동시신고)',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('11월에는 계속근로자 급여(근로소득), 이수진 강사료(사업소득), 한지민 원고료(기타소득)가 함께 발생합니다. (5월 퇴사한 이영희의 결원은 8월에 신규채용된 직원으로 충원되어, 계속근로자는 다시 5명이 되었습니다.) 하나의 원천징수이행상황신고서 안에서 소득종류별로 코드를 구분해 기재합니다.')]),
+      dataTable('11월 지급 내역', ['소득종류','인원','총지급액','소득세 등'], [
+        ['근로소득(A01, 계속근로자)','5명','15,500,000원','260,000원'],
+        ['사업소득(A25, 이수진 강사료)','1명','2,000,000원','60,000원'],
+        ['기타소득(A42, 한지민 원고료)','1명','1,000,000원','80,000원']
+      ])
+    ]));
+
+    host.appendChild(el('div',{class:'card'},[el('h3',{},[text('① 사업소득 세액 계산 (이수진)')])]));
+    var f1 = numberField('nov_biz_tax','','소득세 (2,000,000×3%)');
+    host.appendChild(f1.wrap);
+    var f2 = numberField('nov_biz_local','','지방소득세 (2,000,000×0.3%)');
+    host.appendChild(f2.wrap);
+
+    host.appendChild(el('div',{class:'card'},[el('h3',{},[text('② 기타소득 세액 계산 (한지민)')])]));
+    var f3 = numberField('nov_oth_base','','기타소득금액 (1,000,000-필요경비 60%)');
+    host.appendChild(f3.wrap);
+    var f4 = numberField('nov_oth_tax','','소득세 (기타소득금액×20%)');
+    host.appendChild(f4.wrap);
+    var f5 = numberField('nov_oth_local','','지방소득세 (기타소득금액×2%)');
+    host.appendChild(f5.wrap);
+
+    var months = ['2026-10','2026-11','2026-12'];
+    var doc = renderWonchunDoc(host, {
+      idPrefix:'nov', months:months, title:'원천징수이행상황신고서 (11월 귀속, 근로+사업+기타 동시신고)',
+      blocks:[
+        {category:'근로소득', rowsData:WONCHUN_ROWS, totalCode:'A10', totalLabel:'가감계', activeCodes:['A01']},
+        {category:'사업소득', rowsData:[{code:'A25', label:'매월징수', group:null}], totalCode:'A30', totalLabel:'가감계', activeCodes:['A25']},
+        {category:'기타소득', rowsData:[{code:'A42', label:'매월징수', group:null}], totalCode:'A40', totalLabel:'가감계', activeCodes:['A42']}
+      ]
+    });
+
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var a01=doc.row('A01'), a25=doc.row('A25'), a42=doc.row('A42');
+      var t10=doc.total('A10'), t30=doc.total('A30'), t40=doc.total('A40');
+      var checks = [
+        {ok: within(f1.get(),60000,0), label:'① 사업소득 소득세', law:'2,000,000×3%=60,000원'},
+        {ok: within(f2.get(),6000,0), label:'① 사업소득 지방소득세', law:'2,000,000×0.3%=6,000원'},
+        {ok: within(f3.get(),400000,0), label:'② 기타소득금액', law:'1,000,000-600,000=400,000원'},
+        {ok: within(f4.get(),80000,0), label:'② 기타소득 소득세', law:'400,000×20%=80,000원'},
+        {ok: within(f5.get(),8000,0), label:'② 기타소득 지방소득세', law:'400,000×2%=8,000원'},
+        {ok: doc.gwiwol()==='2026-11' && doc.jigwol()==='2026-11', label:'귀속·지급연월', law:'매월신고이므로 2026-11로 동일'},
+        {ok: within(a01.inwon(),5,0) && within(a01.jigup(),15500000,0) && within(a01.se(),260000,0), label:'A01(근로소득)', law:'5명 / 15,500,000원 / 260,000원'},
+        {ok: within(a25.inwon(),1,0) && within(a25.jigup(),2000000,0) && within(a25.se(),60000,0), label:'A25(사업소득)', law:'1명 / 2,000,000원 / 60,000원'},
+        {ok: within(a42.inwon(),1,0) && within(a42.jigup(),1000000,0) && within(a42.se(),80000,0), label:'A42(기타소득)', law:'1명 / 1,000,000원 / 80,000원'},
+        {ok: within(t10.inwon,5,0) && within(t10.jigup,15500000,0) && within(t10.se,260000,0), label:'A10 가감계(근로소득, 자동)', law:'5명 / 15,500,000원 / 260,000원'},
+        {ok: within(t30.inwon,1,0) && within(t30.jigup,2000000,0) && within(t30.se,60000,0), label:'A30 가감계(사업소득, 자동)', law:'1명 / 2,000,000원 / 60,000원'},
+        {ok: within(t40.inwon,1,0) && within(t40.jigup,1000000,0) && within(t40.se,80000,0), label:'A40 가감계(기타소득, 자동)', law:'1명 / 1,000,000원 / 80,000원'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, Math.ceil(checks.length*0.8));
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 12: 사업소득·기타소득 간이지급명세서 ---- */
+MODULES.push({
+  id:'bizothreport', month:'12월', title:'사업소득·기타소득 간이지급명세서 작성',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('사업소득·기타소득 간이지급명세서는 근로소득과 달리 매월 제출하며, 제출기한은 지급월의 다음달 말일입니다. 11월에 지급한 이수진 강사료(사업소득)와 한지민 원고료(기타소득)를 각각 12월 31일까지 제출합니다.')]),
+      dataTable('11월 지급분 (12월 31일까지 제출)', ['구분','인원','총지급액'], [
+        ['사업소득(이수진 강사료)','1명','2,000,000원'],
+        ['기타소득(한지민 원고료)','1명','1,000,000원']
+      ])
+    ]));
+
+    host.appendChild(el('div',{class:'card doc'},[el('div',{class:'doc-title'},[text('사업소득 간이지급명세서')])]));
+    var months = ['2026-10','2026-11','2026-12'];
+    var deadlines = ['2026-11-30','2026-12-31','2027-01-31'];
+    var b1Y = selectField('biz_sr_gwiwol','①','귀속연월',null, months);
+    var b1D = selectField('biz_sr_deadline','②','제출기한 (지급월의 다음달 말일)',null, deadlines);
+    var b1P = numberField('biz_sr_people','③','인원');
+    var b1A = numberField('biz_sr_amt','④','총지급액');
+    [b1Y.wrap,b1D.wrap,b1P.wrap,b1A.wrap].forEach(function(w){ host.appendChild(w); });
+
+    host.appendChild(el('div',{class:'card doc'},[el('div',{class:'doc-title'},[text('기타소득 간이지급명세서')])]));
+    var b2Y = selectField('oth_sr_gwiwol','⑤','귀속연월',null, months);
+    var b2D = selectField('oth_sr_deadline','⑥','제출기한 (지급월의 다음달 말일)',null, deadlines);
+    var b2P = numberField('oth_sr_people','⑦','인원');
+    var b2A = numberField('oth_sr_amt','⑧','총지급액');
+    [b2Y.wrap,b2D.wrap,b2P.wrap,b2A.wrap].forEach(function(w){ host.appendChild(w); });
+
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var checks = [
+        {ok: b1Y.get()==='2026-11' && b1D.get()==='2026-12-31', label:'사업소득 귀속연월·제출기한', law:'귀속 2026-11 / 제출기한 2026-12-31(지급월의 다음달 말일)'},
+        {ok: within(b1P.get(),1,0) && within(b1A.get(),2000000,0), label:'사업소득 인원·총지급액', law:'1명, 2,000,000원'},
+        {ok: b2Y.get()==='2026-11' && b2D.get()==='2026-12-31', label:'기타소득 귀속연월·제출기한', law:'귀속 2026-11 / 제출기한 2026-12-31(지급월의 다음달 말일)'},
+        {ok: within(b2P.get(),1,0) && within(b2A.get(),1000000,0), label:'기타소득 인원·총지급액', law:'1명, 1,000,000원'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, Math.ceil(checks.length*0.8));
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+/* ---- 13: 12월 원천징수이행상황신고서 (근로+이자+배당 동시신고) ---- */
+MODULES.push({
+  id:'decreport', month:'12월', title:'12월 원천징수이행상황신고서 (근로+이자+배당 동시신고)',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('12월에는 계속근로자 급여(근로소득) 외에, 개인 최원장씨로부터 차입한 자금의 비영업대금이자(이자소득), 개인 주주 김대표에 대한 결산배당(배당소득)이 함께 발생합니다. 이자소득은 대금업을 영위하지 않는 개인 간 사적 대여이므로 비영업대금의 이익(25%+지방소득세2.5%)에 해당하며, 일반 예금·적금 이자(14%+1.4%)와는 세율이 다릅니다.')]),
+      dataTable('12월 지급 내역', ['소득종류','인원','총지급액','소득세 등'], [
+        ['근로소득(A01, 계속근로자)','5명','15,500,000원','260,000원'],
+        ['이자소득(A50, 비영업대금이자)','1명','3,000,000원','계산 필요'],
+        ['배당소득(A60, 결산배당)','1명','5,000,000원','계산 필요']
+      ]),
+      dataTable('이자소득 세율 비교 (참고)', ['구분','원천징수세율'], [
+        ['일반 예금·적금 이자','14% + 1.4% = 15.4%'],
+        ['비영업대금의 이익 (개인 간 사적 대여, 이번 건)','25% + 2.5% = 27.5%']
+      ])
+    ]));
+
+    host.appendChild(el('div',{class:'card'},[el('h3',{},[text('① 비영업대금이자 원천징수')])]));
+    var f1 = numberField('dec_int_tax','','소득세 (3,000,000×25%)');
+    host.appendChild(f1.wrap);
+    var f2 = numberField('dec_int_local','','지방소득세 (3,000,000×2.5%)');
+    host.appendChild(f2.wrap);
+
+    host.appendChild(el('div',{class:'card'},[el('h3',{},[text('② 배당소득 원천징수')])]));
+    var f3 = numberField('dec_div_tax','','소득세 (5,000,000×14%)');
+    host.appendChild(f3.wrap);
+    var f4 = numberField('dec_div_local','','지방소득세 (5,000,000×1.4%)');
+    host.appendChild(f4.wrap);
+
+    var months = ['2026-11','2026-12','2027-01'];
+    var doc = renderWonchunDoc(host, {
+      idPrefix:'dec', months:months, title:'원천징수이행상황신고서 (12월 귀속, 근로+이자+배당 동시신고)',
+      blocks:[
+        {category:'근로소득', rowsData:WONCHUN_ROWS, totalCode:'A10', totalLabel:'가감계', activeCodes:['A01']},
+        {category:'이자소득', rowsData:[{code:'A50', label:'이자소득', group:null}], skipTotal:true, activeCodes:['A50']},
+        {category:'배당소득', rowsData:[{code:'A60', label:'배당소득', group:null}], skipTotal:true, activeCodes:['A60']}
+      ]
+    });
+
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var a01=doc.row('A01'), a50=doc.row('A50'), a60=doc.row('A60');
+      var t10=doc.total('A10');
+      var checks = [
+        {ok: within(f1.get(),750000,0), label:'① 비영업대금이자 소득세', law:'3,000,000×25%=750,000원'},
+        {ok: within(f2.get(),75000,0), label:'① 비영업대금이자 지방소득세', law:'3,000,000×2.5%=75,000원'},
+        {ok: within(f3.get(),700000,0), label:'② 배당소득 소득세', law:'5,000,000×14%=700,000원'},
+        {ok: within(f4.get(),70000,0), label:'② 배당소득 지방소득세', law:'5,000,000×1.4%=70,000원'},
+        {ok: doc.gwiwol()==='2026-12' && doc.jigwol()==='2026-12', label:'귀속·지급연월', law:'매월신고이므로 2026-12로 동일'},
+        {ok: within(a01.inwon(),5,0) && within(a01.jigup(),15500000,0) && within(a01.se(),260000,0), label:'A01(근로소득)', law:'5명 / 15,500,000원 / 260,000원'},
+        {ok: within(a50.inwon(),1,0) && within(a50.jigup(),3000000,0) && within(a50.se(),750000,0), label:'A50(이자소득)', law:'1명 / 3,000,000원 / 750,000원'},
+        {ok: within(a60.inwon(),1,0) && within(a60.jigup(),5000000,0) && within(a60.se(),700000,0), label:'A60(배당소득)', law:'1명 / 5,000,000원 / 700,000원'},
+        {ok: within(t10.inwon,5,0) && within(t10.jigup,15500000,0) && within(t10.se,260000,0), label:'A10 가감계(근로소득, 자동)', law:'5명 / 15,500,000원 / 260,000원'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, Math.ceil(checks.length*0.8));
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+
+/* ---- 14: 연말정산 & 근로소득원천징수영수증 작성 ---- */
+MODULES.push({
+  id:'yearend', month:'익년 2월', title:'연말정산 & 근로소득원천징수영수증 작성',
+  render:function(host,onPass){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('div',{class:'flabel',style:'font-size:14px'},[text('시나리오')]),
+      el('p',{},[text('계속근로자 김한결의 2026년 귀속 연말정산을 진행합니다. 근로소득원천징수영수증(별지 제24호서식) Ⅳ. 정산명세 항목 순서 그대로 계산합니다.')]),
+      dataTable('김한결 2026년 연말정산 자료', ['항목','금액'], [
+        ['총급여(비과세 제외)','33,600,000원'],
+        ['종합소득공제 합계 (인적공제·연금보험료공제 등)','5,000,000원'],
+        ['세액공제 합계 (근로소득세액공제 등)','700,000원'],
+        ['기납부세액 (1~12월 매월 원천징수 누계)','950,000원']
+      ]),
+      dataTable('근로소득공제 (2026년 기준, 참고)', ['총급여 구간','공제액'], [
+        ['500만원 이하','총급여×70%'],
+        ['500만원 초과 1,500만원 이하','350만원+(총급여-500만원)×40%'],
+        ['1,500만원 초과 4,500만원 이하','750만원+(총급여-1,500만원)×15%'],
+        ['4,500만원 초과 1억원 이하','1,200만원+(총급여-4,500만원)×5%']
+      ]),
+      dataTable('종합소득세 기본세율 (참고)', ['과세표준 구간','세율/누진공제'], [
+        ['1,400만원 초과 5,000만원 이하','15%, 누진공제 1,260,000원']
+      ])
+    ]));
+
+    var doc = el('div',{class:'card doc'});
+    doc.appendChild(el('div',{class:'doc-title'},[text('근로소득원천징수영수증 - Ⅳ. 정산명세')]));
+    function docRow(labelHtml, controlEl){
+      var row = el('div',{class:'doc-row'});
+      row.appendChild(el('div',{class:'doc-cell label'},[text(labelHtml)]));
+      var cell = el('div',{class:'doc-cell'}); cell.appendChild(controlEl); row.appendChild(cell);
+      doc.appendChild(row);
+    }
+    var fYear = selectField('ye_year','','귀속연도',null,['2025','2026','2027']); docRow('귀속연도', fYear.wrap.querySelector('select'));
+    var f1 = numberField('ye_deduct','','근로소득공제'); docRow('근로소득공제', f1.input);
+    var f2 = numberField('ye_amount','','근로소득금액'); docRow('근로소득금액', f2.input);
+    var f3 = numberField('ye_base','','종합소득 과세표준'); docRow('종합소득 과세표준', f3.input);
+    var f4 = numberField('ye_calc','','산출세액'); docRow('산출세액', f4.input);
+    var f5 = numberField('ye_final','','결정세액'); docRow('결정세액', f5.input);
+    var f6 = numberField('ye_diff','','차감징수세액 (결정세액-기납부세액)','음수면 환급'); docRow('차감징수세액', f6.input);
+    host.appendChild(doc);
+
+    var result = el('div',{}); host.appendChild(result);
+    var submit = el('button',{},[text('채점하기')]);
+    submit.onclick = function(){
+      var checks = [
+        {ok: fYear.get()==='2026', label:'귀속연도', law:'2026년 귀속 소득을 익년 2월에 정산'},
+        {ok: within(f1.get(),10290000,0), label:'근로소득공제', law:'7,500,000+(33,600,000-15,000,000)×15%=10,290,000원'},
+        {ok: within(f2.get(),23310000,0), label:'근로소득금액', law:'33,600,000-10,290,000=23,310,000원'},
+        {ok: within(f3.get(),18310000,0), label:'종합소득 과세표준', law:'23,310,000-5,000,000=18,310,000원'},
+        {ok: within(f4.get(),1486500,0), label:'산출세액', law:'18,310,000×15%-1,260,000=1,486,500원'},
+        {ok: within(f5.get(),786500,0), label:'결정세액', law:'1,486,500-700,000=786,500원'},
+        {ok: within(f6.get(),-163500,0), label:'차감징수세액', law:'786,500-950,000=△163,500원(환급)'}
+      ];
+      var c = checks.filter(function(x){return x.ok;}).length;
+      showResult(result, c, checks.length, checks, onPass, Math.ceil(checks.length*0.8));
+    };
+    host.appendChild(el('div',{class:'btnrow'},[submit]));
+  }
+});
+
+
+/* ================= app shell ================= */
+function renderSteps(){
+  var bar = document.getElementById('stepsBar');
+  bar.innerHTML = '';
+  MODULES.forEach(function(m,i){
+    var cls = 'step';
+    if(i < progress.passed) cls += ' done';
+    else if(i === state.current) cls += ' current';
+    else cls += ' locked';
+    var s = el('div',{class:cls},[text(String(i+1))]);
+    s.onclick = function(){
+      if(i <= progress.passed){ state.current = i; renderAll(); window.scrollTo({top:0,behavior:'smooth'}); }
+    };
+    bar.appendChild(s);
+  });
+  document.getElementById('stepsLabel').textContent = (state.current+1)+' / '+MODULES.length+' · '+MODULES[state.current].month+' · '+MODULES[state.current].title;
+}
+function renderAll(){
+  renderSteps();
+  var host = document.getElementById('content');
+  host.innerHTML = '';
+  var mod = MODULES[state.current];
+  if(state.current > progress.passed){
+    host.appendChild(el('div',{class:'card'},[el('div',{class:'locked-note'},[text('🔒 이전 모듈을 먼저 통과해야 열립니다.')])]));
+    return;
+  }
+  if(state.current === MODULES.length-1 && progress.passed >= MODULES.length){
+    host.appendChild(el('div',{class:'card scenario'},[
+      el('span',{class:'badge'},[text('완료')]),
+      el('h2',{},[text('축하합니다! 전체 과정을 완료했습니다')]),
+      el('p',{},[text('(주)끌림상사의 1년 원천세 신고 사이클을 처음부터 끝까지 모두 통과했습니다. 급여대장 작성, 비과세 판단, 4대보험, 간이세액표, 원천징수이행상황신고서, 일용근로소득, 중도퇴사·퇴직소득, 간이지급명세서, 사업·기타소득 구분, 이자·배당소득, 연말정산까지 실무 흐름을 모두 실습하셨습니다.')])
+    ]));
+    var backBtn = el('button',{class:'secondary'},[text('처음 모듈부터 다시 살펴보기')]);
+    backBtn.onclick = function(){ state.current = 0; renderAll(); window.scrollTo({top:0,behavior:'smooth'}); };
+    host.appendChild(el('div',{class:'btnrow'},[backBtn]));
+    return;
+  }
+  var titleWrap = el('div',{});
+  titleWrap.appendChild(el('div',{class:'month-tag'},[text(mod.month)]));
+  titleWrap.appendChild(el('h2',{},[text(mod.title)]));
+  host.appendChild(titleWrap);
+  mod.render(host, function(){
+    if(progress.passed <= state.current){ progress.passed = state.current+1; saveProgress(); }
+    if(state.current < MODULES.length-1){ state.current++; }
+    renderAll();
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+}
+state.current = Math.min(progress.passed, MODULES.length-1);
+renderAll();
+})();
+</script>
+</body>
+</html>
