@@ -118,74 +118,22 @@
     letter-spacing: 0.08em;
     color: var(--accent);
   }
-  .toolbar-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  button.copy-btn, button.mail-btn {
+  button.copy-btn {
     font-family: inherit;
     font-size: 14px;
     font-weight: 700;
+    color: var(--accent-ink);
+    background: var(--accent);
+    border: none;
     border-radius: 6px;
     padding: 8px 18px;
     cursor: pointer;
     transition: opacity 0.15s;
   }
-  button.copy-btn {
-    color: var(--accent-ink);
-    background: var(--accent);
-    border: none;
-  }
-  button.mail-btn {
-    color: var(--accent);
-    background: transparent;
-    border: 1px solid var(--accent);
-  }
-  button.copy-btn:hover, button.mail-btn:hover { opacity: 0.75; }
-  button.copy-btn:focus-visible, button.mail-btn:focus-visible,
-  .mail-row input:focus-visible, .mail-row button:focus-visible {
+  button.copy-btn:hover { opacity: 0.88; }
+  button.copy-btn:focus-visible {
     outline: 2px solid var(--ink);
     outline-offset: 2px;
-  }
-
-  .mail-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 12px 18px;
-    border-bottom: 1px solid var(--line);
-    background: var(--surface);
-  }
-  .mail-row input {
-    flex: 1;
-    min-width: 200px;
-    font-family: inherit;
-    font-size: 14px;
-    color: var(--ink);
-    background: var(--block-bg);
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 8px 12px;
-  }
-  .mail-row input::placeholder { color: var(--ink-soft); }
-  .mail-row button {
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--accent-ink);
-    background: var(--accent);
-    border: none;
-    border-radius: 6px;
-    padding: 8px 18px;
-    cursor: pointer;
-  }
-  .mail-hint {
-    flex-basis: 100%;
-    margin: 0;
-    font-size: 12.5px;
-    color: var(--ink-soft);
   }
 
   pre.prompt-text {
@@ -254,15 +202,7 @@
     <div class="prompt-card">
       <div class="prompt-toolbar">
         <span class="label">프로젝트 지침 프롬프트</span>
-        <div class="toolbar-actions">
-          <button class="copy-btn" id="copyBtn" type="button">복사하기</button>
-          <button class="mail-btn" id="mailToggleBtn" type="button">메일로 보내기</button>
-        </div>
-      </div>
-      <div class="mail-row" id="mailRow" hidden>
-        <input type="email" id="mailInput" placeholder="본인 메일 주소 입력 (예: hong@gmail.com)" autocomplete="email">
-        <button id="mailSendBtn" type="button">메일 열기</button>
-        <p class="mail-hint">입력한 주소로 지침이 채워진 메일 작성 화면이 열립니다. 열린 메일에서 보내기를 누르면 전송됩니다.</p>
+        <button class="copy-btn" id="copyBtn" type="button">복사하기</button>
       </div>
       <pre class="prompt-text" id="promptText">너는 세무사무실 신입직원을 돕는 세무회계전문가다.
 나는 정리 안 된 메모를 그대로 던진다. 너는 그것을 신입직원이 잘 이해할 수 있는 지식 카드로 만든다.
@@ -314,37 +254,6 @@
     } else {
       fallbackCopy(text);
     }
-  });
-
-  var mailToggleBtn = document.getElementById('mailToggleBtn');
-  var mailRow = document.getElementById('mailRow');
-  var mailInput = document.getElementById('mailInput');
-  var mailSendBtn = document.getElementById('mailSendBtn');
-
-  mailToggleBtn.addEventListener('click', function () {
-    mailRow.hidden = !mailRow.hidden;
-    if (!mailRow.hidden) mailInput.focus();
-  });
-
-  function sendMail() {
-    var addr = mailInput.value.trim();
-    if (!addr || !mailInput.checkValidity()) {
-      showToast('올바른 메일 주소를 입력하세요');
-      mailInput.focus();
-      return;
-    }
-    var text = document.getElementById('promptText').textContent;
-    var subject = '[김하나세무사 신규직원양성교육] 클로드 프로젝트 지침';
-    var body = text + '\n\n---\n원본 페이지: https://wonderhana.github.io/wonchunse-practice/edu/';
-    location.href = 'mailto:' + encodeURIComponent(addr) +
-      '?subject=' + encodeURIComponent(subject) +
-      '&body=' + encodeURIComponent(body);
-    showToast('메일 작성 화면이 열립니다');
-  }
-
-  mailSendBtn.addEventListener('click', sendMail);
-  mailInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') sendMail();
   });
 
   function fallbackCopy(text) {
